@@ -45,6 +45,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Vector3 flatVel;
     [SerializeField] float maxSpeed;
     [SerializeField] float slowSpeedMultiplier;
+    [SerializeField] float groundSlowSpeed;
+    [SerializeField] float airSlowSpeed;
+    [SerializeField] float noInputAirSlowSpeed;
     [SerializeField] float groundDrag;
     [SerializeField] float desiredSpeed;
     float inAirSpeedCap;
@@ -57,6 +60,17 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float jumpForce;
     [SerializeField] bool jumpPressed;
     bool jumping;
+
+    [Header("Variable Jump")]
+    [SerializeField] bool jumpKeyHeld;
+    [SerializeField] int jumpHeldGravity;
+    [SerializeField] int jumpNotHeldGravity;
+    [SerializeField] Vector3 gravity;
+
+    [Header("FallSpeed")]
+    [SerializeField] Vector3 fallVel;
+    [SerializeField] float maxFallSpeed;
+    
     [Header("Coyote Time")]
     [SerializeField] float coyoteTime;
     [SerializeField] float coyoteCounter;
@@ -79,6 +93,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] TMP_Text text_Speed;
     [SerializeField] TMP_Text text_inAirSpeedCap;
     [SerializeField] TMP_Text text_MoveSpeed;
+    [SerializeField] TMP_Text text_currentGravity;
+    [SerializeField] TMP_Text text_currentSlowSpeedMultiplier;
     
     //[SerializeField] bool stopPlatform;
     //[SerializeField] bool platformReturned;
@@ -139,6 +155,7 @@ public class PlayerMovement : MonoBehaviour
         GroundCheck();
         JumpCheck();
         JumpBufferCheck();
+        Gravity();
         SpeedControl();
         WallRun();
         MoveOnPlatform();
@@ -161,11 +178,13 @@ public class PlayerMovement : MonoBehaviour
         {
             //set jump buffer
             jumpBufferCounter = jumpBufferTime;
+            jumpKeyHeld = true;
             jumpPressed = true;
         }
 
         if (Input.GetKeyUp(jumpKey))
         {
+            jumpKeyHeld = false;
             coyoteCounter = 0;
         }
         //THIS IS FROM USING THE NEW INPUT SYSTEM WHICH SEEMS TO CAUSE A CAMERA JITTER ISSUE IN BUILDS
@@ -210,7 +229,7 @@ public class PlayerMovement : MonoBehaviour
             {
                 rb.AddForce(moveDirection.normalized * moveSpeed * 10, ForceMode.Force);
                 jumping = false;
-                slowSpeedMultiplier = 70f;
+                slowSpeedMultiplier = groundSlowSpeed;
             }
 
             //in air
@@ -279,12 +298,12 @@ public class PlayerMovement : MonoBehaviour
                 //slow down faster with no input
                 if (!moveInput)
                 {
-                    slowSpeedMultiplier = 50f;
+                    slowSpeedMultiplier = noInputAirSlowSpeed;
                 }
                 //in air slowspeed
                 else
                 {
-                    slowSpeedMultiplier = 5f;
+                    slowSpeedMultiplier = airSlowSpeed;
                 }
                 
 
@@ -383,6 +402,32 @@ public class PlayerMovement : MonoBehaviour
         
     }
 
+    private void Gravity()
+    {
+        gravity = Physics.gravity;
+
+        //jump not held
+        if (!isGrounded && (!jumpKeyHeld || rb.velocity.y < 5))
+        {
+            Physics.gravity = new Vector3(0, jumpNotHeldGravity, 0);
+        }
+
+        //jump held
+        else if (!isGrounded && jumpKeyHeld)
+        {
+            Physics.gravity = Physics.gravity = new Vector3(0, jumpHeldGravity, 0);
+        }
+
+        fallVel = new Vector3(0f, rb.velocity.y, 0f);
+
+        if (fallVel.y < maxFallSpeed)
+        {
+            //Vector3 limitFallVel = maxFallSpeed;
+            rb.velocity = new Vector3(rb.velocity.x, maxFallSpeed, rb.velocity.z);
+        }
+
+    }
+
     private void WallRun()
     {
         if (wallRunning)
@@ -446,5 +491,7 @@ public class PlayerMovement : MonoBehaviour
         text_Speed.text = "Velocity: " + flatVel.magnitude.ToString();
         text_inAirSpeedCap.text = "InAirSpeedCap: " + inAirSpeedCap.ToString();
         text_MoveSpeed.text = "MoveSpeed: " + moveSpeed.ToString();
+        text_currentGravity.text = "Gravity: " + gravity.y.ToString();
+        text_currentSlowSpeedMultiplier.text = "SlowSpeed: " + slowSpeedMultiplier.ToString();
     }
 }
